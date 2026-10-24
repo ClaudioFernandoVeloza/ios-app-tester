@@ -1,0 +1,34 @@
+﻿{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "pic-collector-ed80b",
+          "appId": "1:131700900936:android:8468bf62093454e829847d",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "pic-collector-ed80b",
+          "configurations": {
+            "android": "1:131700900936:android:8468bf62093454e829847d",
+            "ios": "1:131700900936:ios:1fc24e56c19c9a7229847d",
+            "web": "1:131700900936:web:0c79b5837ba666a229847d"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22"
+    }
+  ]
+}

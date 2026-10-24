@@ -1,0 +1,92 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Username reservations: doc ID is the lowercased username.
+    // Public read so the sign-up form can pre-check availability
+    // before a Firebase Auth account exists.
+    match /usernames/{normalizedUsername} {
+      allow read: if true;
+      allow create: if normalizedUsername == request.resource.data['username'].lower()
+        && request.resource.data['uid'] is string
+        && request.resource.data['username'] is string
+        && !exists(/databases/$(database)/documents/usernames/$(normalizedUsername));
+      allow update, delete: if false;
+    }
+
+    // User profiles: only the owning signed-in user can create/update.
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasAll(['username', 'usernameLower', 'firstName', 'surname', 'email'])
+        && request.resource.data['usernameLower'] == request.resource.data['username'].lower();
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasAll(['username', 'usernameLower', 'firstName', 'surname', 'email']);
+      allow delete: if false;
+
+      // Device push tokens for this user. Only the owner may read/write them
+      // (they must be able to save their own token on login and remove it on
+      // logout). The Cloud Functions Admin SDK bypasses these rules to read
+      // the tokens and send the actual push notifications.
+      match /fcmTokens/{tokenId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // Friend requests: doc ID is '{fromUid}_{toUid}' (deterministic so
+    // duplicate requests collide instead of creating a second doc).
+    match /friend_requests/{requestId} {
+      // Single-doc reads must be allowed for any signed-in user so the
+      // send flow can check whether a request doc already exists before
+      // creating it. Listing/querying stays restricted to participants.
+      allow get: if request.auth != null;
+      allow list: if request.auth != null
+        && (resource.data['fromUid'] == request.auth.uid
+          || resource.data['toUid'] == request.auth.uid);
+      // Only the sender creates, with a well-formed pending request.
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data['fromUid']
+        && request.resource.data['toUid'] is string
+        && request.resource.data['fromUid'] != request.resource.data['toUid']
+        && request.resource.data.keys().hasAll(
+          ['fromUid', 'fromUsername', 'fromName', 'toUid', 'toUsernameLower', 'status'])
+        && request.resource.data['status'] == 'pending';
+      // Only the receiver flips pending -> accepted/declined.
+      allow update: if request.auth != null
+        && resource.data['toUid'] == request.auth.uid
+        && resource.data['status'] == 'pending'
+        && request.resource.data['status'] in ['accepted', 'declined'];
+      allow delete: if false;
+    }
+
+
+
+    // Friendships: mirror docs written by the accept flow.
+    // friendships/{uid}/friends/{friendUid}
+    match /friendships/{uid}/friends/{friendUid} {
+      // Owner reads their own list.
+      allow read: if request.auth != null && request.auth.uid == uid;
+      // Created by the accept batch: either side may be the writer
+      // (receiver accepts, writing both mirrors in one batch).
+      allow create: if request.auth != null
+        && (request.auth.uid == uid || request.auth.uid == friendUid)
+        && request.resource.data['uid'] == friendUid
+        && request.resource.data.keys().hasAll(['uid', 'username', 'name', 'email']);
+      // Only the doc owner may update, and only the nickname field may
+      // change: nicknames are private per-user labels (what I call this
+      // friend), stored in the owner's own mirror doc.
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nickname'])
+        && (!('nickname' in request.resource.data)
+            || request.resource.data['nickname'] is string);
+      // Either participant may remove the friendship: the client deletes
+      // both mirror docs in one batch (unfriend from either side).
+      allow delete: if request.auth != null
+        && (request.auth.uid == uid || request.auth.uid == friendUid);
+    }
+  }
+}
