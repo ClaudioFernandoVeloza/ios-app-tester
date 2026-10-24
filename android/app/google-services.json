@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "131700900936",
+    "project_id": "pic-collector-ed80b",
+    "storage_bucket": "pic-collector-ed80b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:131700900936:android:8468bf62093454e829847d",
+        "android_client_info": {
+          "package_name": "com.example.pic_collector"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtoXCxamPscOHhSJSfwcdJ0iC7hKk6e-8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
